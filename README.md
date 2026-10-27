@@ -32,7 +32,7 @@
 Not affiliated with or endorsed by any employer, or by Winamp, Plex, Spotify, YouTube or Google (<a href="#about-this-project--contributors">more</a>).</sub></p>
 
 <p align="center">
-  <img src="docs/images/hero.png" width="880" alt="Perfect Sound playing Neon Freeway by The Seven Segments: the seven-segment clock at 1:33, PLEX source toggle and PLEX LIBRARY button, synthwave sunset cover, green frequency bands and a six-track playlist">
+  <img src="docs/images/hero.png" width="880" alt="Perfect Sound playing Neon Freeway by The Seven Segments: the seven-segment clock at 1:33, PLEX source toggle, OPEN FILES / ADD FOLDER / PLAYLIST buttons, synthwave sunset cover, green frequency bands and a six-track playlist">
 </p>
 
 ## What it is
@@ -53,7 +53,8 @@ Googlebook's display scaling and at any window size.
 - **Remote mode** for the **Spotify** and **YouTube Music** web players and anything else in
   **Chrome**: see and control what's playing, with the visualizer bouncing to it too.
 - **A real playlist:** add local files, folders, or Plex tracks/albums/playlists; select with Ctrl
-  and Shift, drag to reorder, right-click for more.
+  and Shift, drag to reorder, right-click for more. Show or hide it with the **PLAYLIST** button under
+  the album art or Alt+E.
 - **The classic keyboard shortcuts:** Z X C V B for the transport, and the rest below.
 
 ## The visualizer
@@ -70,11 +71,11 @@ under each button show where you are, and Perfect Sound remembers both. For your
 ## Plex Media Server: Home & On the Go
 
 <p align="center">
-  <img src="docs/images/plex.png" width="880" alt="Perfect Sound in PLEX mode streaming from Home Server [LOCAL] alongside the retro LCD Plex Music Browser with album tracks, ON-THE-GO quality control and PLAY/+Q actions">
+  <img src="docs/images/plex.png" width="880" alt="Perfect Sound in PLEX mode streaming from Home Server [LOCAL] alongside the retro LCD Plex Music Browser with album tracks, ON-THE-GO quality control, a PLAYLIST toggle and PLAY/+Q actions">
   <br><sub>Streaming from a Plex Media Server: the player on the left shows the active server and route (<code>PLEX - HOME SERVER [LOCAL]</code>), while the Plex Music Browser on the right browses artists, albums, playlists and tracks with one-click <code>PLAY</code> and <code>+Q</code> queueing.</sub>
 </p>
 
-Pick **PLEX** in the source bar (or click **PLEX LIBRARY** / **ADD → Add from Plex…**) to open the
+Pick **PLEX** in the source bar (or use **ADD → Add from Plex…** in the playlist) to open the
 retro LCD **Plex Music Browser**:
 
 - **Two ways to connect:**
@@ -239,6 +240,7 @@ Perfect Sound was created as a personal passion project by
 - **Seamless Home & On-the-Go Roaming:** concurrent endpoint probing (`LOCAL` LAN → `REMOTE` Direct → `RELAY` fallback), live `ConnectivityManager.NetworkCallback` handoff across Wi-Fi and cellular networks, and `*.plex.direct` TLS verification over direct LAN IPs.
 - **On-the-Go Bitrate Control:** lossless direct streaming on local LAN and configurable remote transcoding (`ORIG`, `320K`, `192K`, `128K`) via Plex's Universal Audio Transcoder.
 - **Retro LCD Plex Music Browser:** browse and search artists, albums, playlists, and tracks across Plex music libraries (`PlexBrowserDialog`), with Media3 `ResolvingDataSource` token-safe `plex://` queue persistence and authenticated cover art loading.
+- **Desktop polish:** hover tooltips, pointer cursors and hover highlights on every control; a **PLAYLIST** toggle under the album art in Local and Plex modes (replacing **PLEX LIBRARY**); and Now Playing buttons that stay fully visible at any window size.
 
 This project has no affiliation with any employer: no employer made, sponsored, reviewed or endorsed it, and nothing here speaks for any employer or endorses its products.
 
