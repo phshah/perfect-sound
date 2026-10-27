@@ -17,6 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,11 +48,15 @@ fun PopupMenu(items: List<MenuItem>, offset: IntOffset, onDismiss: () -> Unit) {
                         .fillMaxWidth()
                         .background(if (hovered && item.enabled) PsColors.Selection else PsColors.PanelBottom)
                         .hoverable(interaction)
+                        .then(if (item.enabled) Modifier.pointerHoverIcon(PointerIcon.Hand) else Modifier)
                         .clickable(interaction, null, enabled = item.enabled) { onDismiss(); item.onClick() }
                         .padding(horizontal = 14.dp, vertical = 5.dp),
                 ) {
                     BasicText(item.label, style = LabelStyle.copy(
-                        color = if (item.enabled) PsColors.Text else PsColors.TextDim, fontSize = 12.sp, letterSpacing = 0.sp))
+                        color = if (!item.enabled) PsColors.TextDim else if (hovered) Color.White else PsColors.Text,
+                        fontSize = 12.sp,
+                        letterSpacing = 0.sp,
+                    ))
                 }
             }
         }

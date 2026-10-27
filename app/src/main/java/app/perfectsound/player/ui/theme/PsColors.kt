@@ -26,5 +26,6 @@ object PsColors {
 
     val Panel: Brush = Brush.verticalGradient(listOf(PanelTop, PanelBottom))
     val ButtonFace: Brush = Brush.verticalGradient(listOf(Color(0xFF3A414B), Color(0xFF22262D)))
+    val ButtonFaceHover: Brush = Brush.verticalGradient(listOf(Color(0xFF4A5360), Color(0xFF2C323B)))
     val ButtonFacePressed: Brush = Brush.verticalGradient(listOf(Color(0xFF1A1D22), Color(0xFF2A2F37)))
 }

@@ -52,15 +52,16 @@ import app.perfectsound.player.ui.components.LabelStyle
 import app.perfectsound.player.ui.components.LcdTextStyle
 import app.perfectsound.player.ui.components.LedToggle
 import app.perfectsound.player.ui.components.TitleStrip
+import app.perfectsound.player.ui.components.WithTooltip
 import app.perfectsound.player.ui.theme.PsColors
 import kotlinx.coroutines.launch
 
-private enum class BrowseTab(val label: String) {
-    Artists("ARTISTS"),
-    Albums("ALBUMS"),
-    Playlists("PLAYLISTS"),
-    Tracks("TRACKS"),
-    Search("SEARCH"),
+private enum class BrowseTab(val label: String, val tooltip: String) {
+    Artists("ARTISTS", "Browse your Plex library by Artist"),
+    Albums("ALBUMS", "Browse your Plex library by Album"),
+    Playlists("PLAYLISTS", "Browse your Plex audio playlists"),
+    Tracks("TRACKS", "Browse all tracks in this music section"),
+    Search("SEARCH", "Search artists, albums, and tracks on your Plex server"),
 }
 
 private sealed interface DrillDown {
@@ -101,7 +102,13 @@ fun PlexBrowserDialog(
                     Modifier.align(Alignment.CenterEnd).padding(end = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    LedToggle("CLOSE", on = false, onClick = onDismiss, led = false)
+                    LedToggle(
+                        "CLOSE",
+                        on = false,
+                        onClick = onDismiss,
+                        led = false,
+                        tooltip = "Close Plex Music Browser (Esc)",
+                    )
                 }
             }
 
@@ -194,20 +201,44 @@ private fun ConnectionHeaderBar(
             modifier = Modifier.weight(1f),
         )
         if (state.servers.size > 1) {
-            LedToggle("SERVER ⟳", on = false, onClick = onCycleServer, led = false)
+            LedToggle(
+                "SERVER ⟳",
+                on = false,
+                onClick = onCycleServer,
+                led = false,
+                tooltip = "Switch active Plex Media Server (currently ${state.selectedServer?.name.orEmpty()})",
+            )
         }
         if (state.sections.size > 1 && state.selectedSection != null) {
-            LedToggle("LIB: ${state.selectedSection.title.uppercase()}", on = false, onClick = onCycleSection, led = false)
+            LedToggle(
+                "LIB: ${state.selectedSection.title.uppercase()}",
+                on = false,
+                onClick = onCycleSection,
+                led = false,
+                tooltip = "Switch Plex music library section (currently ${state.selectedSection.title})",
+            )
         }
         LedToggle(
             label = "ON-THE-GO: ${state.remoteQuality.label}",
             on = state.remoteQuality.kbps != null,
             onClick = onCycleQuality,
+            tooltip = "Remote / Relay streaming quality (${state.remoteQuality.label}) — Click to cycle ORIG / 320K / 192K / 128K",
         )
         if (state.isSignedIn) {
-            LedToggle("⟳", on = state.connecting, onClick = onRefresh, led = false)
+            LedToggle(
+                "⟳",
+                on = state.connecting,
+                onClick = onRefresh,
+                led = false,
+                tooltip = "Refresh server list and re-probe Local / Remote / Relay routes",
+            )
         }
-        LedToggle("SETUP", on = showSetup, onClick = onToggleSetup)
+        LedToggle(
+            "SETUP",
+            on = showSetup,
+            onClick = onToggleSetup,
+            tooltip = if (showSetup) "Hide connection setup and return to library browser" else "Configure Plex Sign-In or manual server connection",
+        )
     }
 }
 
@@ -266,7 +297,13 @@ private fun PlexSetupPanel(
                         style = LcdTextStyle.copy(color = PsColors.Amber, fontSize = 12.sp),
                     )
                     Spacer(Modifier.weight(1f))
-                    LedToggle("CANCEL", on = false, onClick = onCancelPin, led = false)
+                    LedToggle(
+                        "CANCEL",
+                        on = false,
+                        onClick = onCancelPin,
+                        led = false,
+                        tooltip = "Cancel pending Plex PIN sign-in",
+                    )
                 }
             } else {
                 Row(
@@ -278,9 +315,16 @@ private fun PlexSetupPanel(
                         on = !state.connecting,
                         enabled = !state.connecting,
                         onClick = onSignInClick,
+                        tooltip = "Sign in with your Plex account in browser or via plex.tv/link code",
                     )
                     if (state.isSignedIn) {
-                        LedToggle("SIGN OUT", on = false, onClick = onSignOut, led = false)
+                        LedToggle(
+                            "SIGN OUT",
+                            on = false,
+                            onClick = onSignOut,
+                            led = false,
+                            tooltip = "Disconnect from Plex and clear saved credentials",
+                        )
                     }
                 }
             }
@@ -320,6 +364,7 @@ private fun PlexSetupPanel(
                     on = manualUrl.isNotBlank() && manualToken.isNotBlank(),
                     enabled = manualUrl.isNotBlank() && manualToken.isNotBlank() && !state.connecting,
                     onClick = { onConnectManual(manualUrl, manualRemoteUrl.takeIf { it.isNotBlank() }, manualToken) },
+                    tooltip = "Connect directly using the Server URL and X-Plex-Token above",
                 )
             }
         }
@@ -449,6 +494,7 @@ private fun PlexLibraryContent(
                 LedToggle(
                     label = t.label,
                     on = tab == t,
+                    tooltip = t.tooltip,
                     onClick = {
                         tab = t
                         drillDown = DrillDown.Root
@@ -461,6 +507,7 @@ private fun PlexLibraryContent(
                     label = "← BACK",
                     on = false,
                     led = false,
+                    tooltip = "Return to previous library view",
                     onClick = {
                         drillDown = when (val d = drillDown) {
                             is DrillDown.AlbumTracks -> d.fromArtist?.let { DrillDown.ArtistAlbums(it) } ?: DrillDown.Root
@@ -507,6 +554,7 @@ private fun PlexLibraryContent(
                     label = "FIND",
                     on = searchQuery.isNotBlank(),
                     enabled = searchQuery.isNotBlank() && !loading,
+                    tooltip = "Search Plex library for matching artists, albums, and tracks",
                     onClick = {
                         if (server != null && endpoint != null && searchQuery.isNotBlank()) {
                             scope.launch {
@@ -550,13 +598,24 @@ private fun PlexLibraryContent(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                LedToggle("PLAY ALL", on = true, onClick = {
-                    onPlayTracks(tracks.map { it.toMediaItem() }, true)
-                    onDismiss()
-                })
-                LedToggle("+ QUEUE ALL", on = false, led = false, onClick = {
-                    onPlayTracks(tracks.map { it.toMediaItem() }, false)
-                })
+                LedToggle(
+                    "PLAY ALL",
+                    on = true,
+                    tooltip = "Replace playlist and play all ${tracks.size} tracks now",
+                    onClick = {
+                        onPlayTracks(tracks.map { it.toMediaItem() }, true)
+                        onDismiss()
+                    },
+                )
+                LedToggle(
+                    "+ QUEUE ALL",
+                    on = false,
+                    led = false,
+                    tooltip = "Append all ${tracks.size} tracks to the end of your current playlist",
+                    onClick = {
+                        onPlayTracks(tracks.map { it.toMediaItem() }, false)
+                    },
+                )
             }
         }
 
@@ -687,20 +746,26 @@ private fun PlexLibraryContent(
 
 @Composable
 private fun ArtistRow(artist: PlexArtist, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BasicText(
-            "▸ ${artist.title}",
-            style = LcdTextStyle.copy(color = PsColors.Lcd, fontSize = 13.sp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
+    WithTooltip(
+        tooltip = "Click to view albums by ${artist.title}",
+        modifier = Modifier.fillMaxWidth(),
+    ) { hovered ->
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(if (hovered) PsColors.Selection.copy(alpha = 0.45f) else PsColors.LcdBackground)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicText(
+                "▸ ${artist.title}",
+                style = LcdTextStyle.copy(color = if (hovered) PsColors.Current else PsColors.Lcd, fontSize = 13.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
@@ -714,22 +779,45 @@ private fun AlbumRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpen)
             .padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         val yearSuffix = album.year?.let { " ($it)" }.orEmpty()
         val artistPrefix = album.artist?.takeIf { it.isNotBlank() }?.let { "$it — " }.orEmpty()
-        BasicText(
-            "▸ $artistPrefix${album.title}$yearSuffix",
-            style = LcdTextStyle.copy(color = PsColors.Lcd, fontSize = 13.sp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        WithTooltip(
+            tooltip = "Click to view tracks in ${album.title}",
             modifier = Modifier.weight(1f),
+        ) { hovered ->
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(if (hovered) PsColors.Selection.copy(alpha = 0.45f) else PsColors.LcdBackground, RoundedCornerShape(2.dp))
+                    .clickable(onClick = onOpen)
+                    .padding(vertical = 2.dp),
+            ) {
+                BasicText(
+                    "▸ $artistPrefix${album.title}$yearSuffix",
+                    style = LcdTextStyle.copy(color = if (hovered) PsColors.Current else PsColors.Lcd, fontSize = 13.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        LedToggle(
+            "PLAY",
+            on = false,
+            led = false,
+            tooltip = "Play album \"${album.title}\" now (replaces current playlist)",
+            onClick = onPlay,
         )
-        LedToggle("PLAY", on = false, led = false, onClick = onPlay)
-        LedToggle("+Q", on = false, led = false, onClick = onQueue)
+        LedToggle(
+            "+Q",
+            on = false,
+            led = false,
+            tooltip = "Add album \"${album.title}\" to the end of your playlist",
+            onClick = onQueue,
+        )
     }
 }
 
@@ -743,20 +831,43 @@ private fun PlaylistRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpen)
             .padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        BasicText(
-            "▸ ${playlist.title} (${playlist.trackCount} tracks)",
-            style = LcdTextStyle.copy(color = PsColors.Lcd, fontSize = 13.sp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        WithTooltip(
+            tooltip = "Click to view tracks in playlist \"${playlist.title}\"",
             modifier = Modifier.weight(1f),
+        ) { hovered ->
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(if (hovered) PsColors.Selection.copy(alpha = 0.45f) else PsColors.LcdBackground, RoundedCornerShape(2.dp))
+                    .clickable(onClick = onOpen)
+                    .padding(vertical = 2.dp),
+            ) {
+                BasicText(
+                    "▸ ${playlist.title} (${playlist.trackCount} tracks)",
+                    style = LcdTextStyle.copy(color = if (hovered) PsColors.Current else PsColors.Lcd, fontSize = 13.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        LedToggle(
+            "PLAY",
+            on = false,
+            led = false,
+            tooltip = "Play playlist \"${playlist.title}\" now (replaces current playlist)",
+            onClick = onPlay,
         )
-        LedToggle("PLAY", on = false, led = false, onClick = onPlay)
-        LedToggle("+Q", on = false, led = false, onClick = onQueue)
+        LedToggle(
+            "+Q",
+            on = false,
+            led = false,
+            tooltip = "Add playlist \"${playlist.title}\" to the end of your playlist",
+            onClick = onQueue,
+        )
     }
 }
 
@@ -770,24 +881,41 @@ private fun PlexTrackRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onPlay)
             .padding(horizontal = 10.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         val label = if (track.artist.isNullOrBlank()) track.title else "${track.artist} - ${track.title}"
-        BasicText(
-            "${index + 1}. $label",
-            style = LcdTextStyle.copy(color = PsColors.Lcd, fontSize = 13.sp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        WithTooltip(
+            tooltip = "Click to play \"$label\" now",
             modifier = Modifier.weight(1f),
-        )
+        ) { hovered ->
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(if (hovered) PsColors.Selection.copy(alpha = 0.45f) else PsColors.LcdBackground, RoundedCornerShape(2.dp))
+                    .clickable(onClick = onPlay)
+                    .padding(vertical = 2.dp),
+            ) {
+                BasicText(
+                    "${index + 1}. $label",
+                    style = LcdTextStyle.copy(color = if (hovered) PsColors.Current else PsColors.Lcd, fontSize = 13.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
         BasicText(
             formatTime(track.durationMs),
             style = LcdTextStyle.copy(color = PsColors.TextDim, fontSize = 12.sp),
         )
-        LedToggle("+Q", on = false, led = false, onClick = onQueue)
+        LedToggle(
+            "+Q",
+            on = false,
+            led = false,
+            tooltip = "Add \"${track.title}\" to the end of your playlist",
+            onClick = onQueue,
+        )
     }
 }
 

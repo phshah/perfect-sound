@@ -43,7 +43,9 @@ import app.perfectsound.player.ui.components.LcdTextStyle
 import app.perfectsound.player.ui.components.LedToggle
 import app.perfectsound.player.ui.components.SevenSegment
 import app.perfectsound.player.ui.components.TitleStrip
+import app.perfectsound.player.ui.components.WithTooltip
 import app.perfectsound.player.ui.theme.PsColors
+import kotlin.math.roundToInt
 
 /** Actions the main panel can trigger; implemented by the app shell. */
 interface MainPanelActions {
@@ -102,13 +104,17 @@ fun MainPanel(
                         Spacer(Modifier.width(8.dp))
                         val position = if (seeking) (seekFraction * state.durationMs).toLong() else state.positionMs
                         val shown = if (showRemaining && state.durationMs > 0) state.durationMs - position else position
-                        SevenSegment(
-                            text = formatLcdTime(shown, negative = showRemaining),
-                            modifier = Modifier
-                                .height(30.dp)
-                                .width(110.dp)
-                                .clickable(remember { MutableInteractionSource() }, null) { showRemaining = !showRemaining },
-                        )
+                        WithTooltip(
+                            tooltip = if (showRemaining) "Remaining time — Click to show elapsed time" else "Elapsed time — Click to show remaining time",
+                        ) {
+                            SevenSegment(
+                                text = formatLcdTime(shown, negative = showRemaining),
+                                modifier = Modifier
+                                    .height(30.dp)
+                                    .width(110.dp)
+                                    .clickable(remember { MutableInteractionSource() }, null) { showRemaining = !showRemaining },
+                            )
+                        }
                     }
                     MiniAnalyzer(levels, Modifier.fillMaxWidth().height(20.dp))
                 }
@@ -144,6 +150,7 @@ fun MainPanel(
                             onChange = actions::setVolume,
                             fill = Brush.horizontalGradient(listOf(PsColors.LcdMid, PsColors.Amber)),
                             modifier = Modifier.width(140.dp),
+                            tooltip = "Volume: ${(state.volume * 100).roundToInt()}% (Up / Down)",
                         )
                     }
                 }
@@ -159,6 +166,7 @@ fun MainPanel(
                 },
                 enabled = state.canSeek,
                 modifier = Modifier.fillMaxWidth(),
+                tooltip = "Seek position (Left / Right to seek 5s)",
             )
 
             // Transport, and the source at the right end: just icons when the panel is narrow
@@ -166,20 +174,29 @@ fun MainPanel(
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val compact = maxWidth < 680.dp
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                    IconButton(actions::previous, icon = Icons.Previous)
-                    IconButton(actions::play, icon = Icons.Play)
-                    IconButton(actions::pause, icon = Icons.Pause)
-                    IconButton(actions::stop, icon = Icons.Stop)
-                    IconButton(actions::next, icon = Icons.Next)
+                    IconButton(actions::previous, tooltip = "Previous track (Z)", icon = Icons.Previous)
+                    IconButton(actions::play, tooltip = "Play (X)", icon = Icons.Play)
+                    IconButton(actions::pause, tooltip = "Pause (C)", icon = Icons.Pause)
+                    IconButton(actions::stop, tooltip = "Stop (V)", icon = Icons.Stop)
+                    IconButton(actions::next, tooltip = "Next track (B)", icon = Icons.Next)
                     Spacer(Modifier.width(6.dp))
-                    IconButton(actions::open, width = 34.dp, icon = Icons.Eject)
+                    IconButton(
+                        actions::open,
+                        width = 34.dp,
+                        tooltip = if (source == Source.Plex) "Open Plex Music Browser (L)" else "Open audio files… (L)",
+                        icon = Icons.Eject,
+                    )
                     Spacer(Modifier.weight(1f))
                     // Source: the built-in player, or remote control of a streaming app
                     if (!compact) BasicText("SOURCE", style = LabelStyle, modifier = Modifier.padding(end = 4.dp))
                     sources.forEach { option ->
                         LedToggle(
-                            if (compact) "" else option.label, option.source == source, { actions.selectSource(option.source) },
-                            enabled = option.available, icon = sourceIcon(option.source),
+                            if (compact) "" else option.label,
+                            option.source == source,
+                            { actions.selectSource(option.source) },
+                            enabled = option.available,
+                            tooltip = sourceTooltip(option.source),
+                            icon = sourceIcon(option.source),
                         )
                     }
                 }
@@ -195,6 +212,16 @@ private fun sourceIcon(source: Source) = when (source) {
         RemoteSessions.App.Spotify -> Icons.Waves
         RemoteSessions.App.YouTubeMusic -> Icons.PlayRing
         RemoteSessions.App.Chrome -> Icons.Globe
+    }
+}
+
+private fun sourceTooltip(source: Source) = when (source) {
+    Source.Local -> "Local Files — Play audio files stored on your device"
+    Source.Plex -> "Plex Media Server — Stream from your Plex library (LAN / Remote / Relay)"
+    is Source.Remote -> when (source.app) {
+        RemoteSessions.App.Spotify -> "Spotify Web Player — Follow and control Spotify in Chrome"
+        RemoteSessions.App.YouTubeMusic -> "YouTube Music Web Player — Follow and control YouTube Music in Chrome"
+        RemoteSessions.App.Chrome -> "Chrome Media — Follow and control audio playing in Chrome"
     }
 }
 

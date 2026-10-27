@@ -237,9 +237,9 @@ class MainActivity : ComponentActivity() {
             }
         }
         val buttons = listOf(
-            PanelButton("OPEN FILES") { openFiles(replace = true) },
-            PanelButton("ADD FOLDER") { pickFolder.launch(null) },
-            PanelButton("PLEX LIBRARY") { showPlexDialog.value = true },
+            PanelButton("OPEN FILES", tooltip = "Open audio files and replace the current playlist (L)") { openFiles(replace = true) },
+            PanelButton("ADD FOLDER", tooltip = "Add all audio files from a folder to the playlist (Shift+L)") { pickFolder.launch(null) },
+            PanelButton("PLEX LIBRARY", tooltip = "Browse and stream music from your Plex Media Server") { showPlexDialog.value = true },
         )
         return if (track == null) NowPlayingContent(
             label = "NOW PLAYING",
@@ -274,10 +274,15 @@ class MainActivity : ComponentActivity() {
             else -> "PLEX MEDIA SERVER"
         }
         val buttons = listOf(
-            PanelButton("BROWSE PLEX", on = plexState.isConnected) { showPlexDialog.value = true },
+            PanelButton(
+                "BROWSE PLEX",
+                on = plexState.isConnected,
+                tooltip = "Open Plex Music Browser (Artists, Albums, Playlists, Search)",
+            ) { showPlexDialog.value = true },
             PanelButton(
                 "ON-THE-GO: ${plexState.remoteQuality.label}",
                 on = plexState.remoteQuality.kbps != null,
+                tooltip = "Remote / Relay streaming quality (${plexState.remoteQuality.label}) — Click to cycle ORIG / 320K / 192K / 128K",
                 onClick = plexManager::cycleRemoteQuality,
             ),
         )
@@ -292,7 +297,13 @@ class MainActivity : ComponentActivity() {
                 message = PanelMessage(
                     "Connect your Plex Media Server",
                     "Stream your music library directly in Perfect Sound — automatically uses Local LAN at home and Remote Direct or Plex Relay on the go.",
-                    listOf(PanelButton("CONNECT PLEX", on = true) { showPlexDialog.value = true }),
+                    listOf(
+                        PanelButton(
+                            "CONNECT PLEX",
+                            on = true,
+                            tooltip = "Sign in with your Plex account or enter your server URL and X-Plex-Token",
+                        ) { showPlexDialog.value = true }
+                    ),
                 ),
                 buttons = buttons,
             )
@@ -306,7 +317,13 @@ class MainActivity : ComponentActivity() {
                     } else {
                         "Check your network or open Plex Setup to refresh server connections."
                     },
-                    listOf(PanelButton("BROWSE PLEX", on = true) { showPlexDialog.value = true }),
+                    listOf(
+                        PanelButton(
+                            "BROWSE PLEX",
+                            on = true,
+                            tooltip = "Open Plex Music Browser to browse or search your library",
+                        ) { showPlexDialog.value = true }
+                    ),
                 ),
                 buttons = buttons,
             )
@@ -344,8 +361,8 @@ class MainActivity : ComponentActivity() {
                             "2. Click APP INFO, open ⋮ at the top right and choose Allow restricted settings.\n" +
                             "3. Click GRANT ACCESS again and turn it on."),
                     listOfNotNull(
-                        PanelButton("GRANT ACCESS") { startActivity(remote.accessSettingsIntent()) },
-                        if (state.accessRestricted) PanelButton("APP INFO") { startActivity(remote.appInfoIntent()) } else null,
+                        PanelButton("GRANT ACCESS", tooltip = "Open Android Notification Access settings for Perfect Sound") { startActivity(remote.accessSettingsIntent()) },
+                        if (state.accessRestricted) PanelButton("APP INFO", tooltip = "Open App Info to allow restricted settings for Perfect Sound") { startActivity(remote.appInfoIntent()) } else null,
                     ),
                 ),
                 buttons = buttons,

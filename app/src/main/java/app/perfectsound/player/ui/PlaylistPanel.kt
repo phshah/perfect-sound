@@ -249,7 +249,12 @@ fun PlaylistPanel(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Box {
-                LedToggle("ADD", addMenu, { addMenu = true })
+                LedToggle(
+                    "ADD",
+                    addMenu,
+                    { addMenu = true },
+                    tooltip = "Add music to playlist (Files, Folder, or Plex Library)",
+                )
                 if (addMenu) PopupMenu(
                     listOf(
                         MenuItem("Add files…", onClick = actions::addFiles),
@@ -260,8 +265,20 @@ fun PlaylistPanel(
                     onDismiss = { addMenu = false },
                 )
             }
-            LedToggle("REM", false, { actions.remove(selected); selected = emptySet() }, enabled = selected.isNotEmpty())
-            LedToggle("CLR", false, { actions.clear(); selected = emptySet() }, enabled = count > 0)
+            LedToggle(
+                "REM",
+                false,
+                { actions.remove(selected); selected = emptySet() },
+                enabled = selected.isNotEmpty(),
+                tooltip = "Remove selected tracks from playlist (Delete)",
+            )
+            LedToggle(
+                "CLR",
+                false,
+                { actions.clear(); selected = emptySet() },
+                enabled = count > 0,
+                tooltip = "Clear all tracks from playlist",
+            )
             Spacer(Modifier.weight(1f))
             BasicText(
                 (if (selected.size > 1) "${selected.size} selected · " else "") +

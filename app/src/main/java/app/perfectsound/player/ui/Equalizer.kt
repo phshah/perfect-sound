@@ -34,6 +34,7 @@ import app.perfectsound.player.audio.SpectrumAnalyzer
 import app.perfectsound.player.ui.components.LabelStyle
 import app.perfectsound.player.ui.components.LedToggle
 import app.perfectsound.player.ui.components.VSlider
+import app.perfectsound.player.ui.components.WithTooltip
 import app.perfectsound.player.ui.theme.PsColors
 
 /**
@@ -73,47 +74,70 @@ fun EqSection(
             BasicText(visMode.label, Modifier.height(20.dp).wrapContentHeight(), style = LabelStyle.copy(letterSpacing = 2.sp))
             Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                LedToggle("COLOR", false, { onVisThemeChange(visTheme.next()) }, led = false)
+                LedToggle(
+                    "COLOR",
+                    false,
+                    { onVisThemeChange(visTheme.next()) },
+                    led = false,
+                    tooltip = "Color theme: ${visTheme.name} — Click to switch to ${visTheme.next().name}",
+                )
                 ThemeDots(visTheme, Modifier.padding(top = 4.dp))
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                LedToggle("MODE", false, { onVisModeChange(visMode.next()) }, led = false)
+                LedToggle(
+                    "MODE",
+                    false,
+                    { onVisModeChange(visMode.next()) },
+                    led = false,
+                    tooltip = "Visualizer mode: ${visMode.label} — Click to switch to ${visMode.next().label}",
+                )
                 ModeDots(visMode, Modifier.padding(top = 4.dp))
             }
             // Local files bounce without a switch; in remote mode ON starts the audio capture.
-            if (onToggle != null) LedToggle("ON", on, onToggle)
+            if (onToggle != null) {
+                LedToggle(
+                    "ON",
+                    on,
+                    onToggle,
+                    tooltip = if (on) "Audio capture active — Click to stop capturing playback" else "Capture app audio so the visualizer bounces to remote playback",
+                )
+            }
             if (EQ_TUNING_ENABLED) {
-                if (onToggle == null) LedToggle("ON", on, { onSettingsChange(settings.copy(enabled = !settings.enabled)) }, enabled = false)
-                LedToggle("AUTO", false, {}, enabled = false)
-                LedToggle("PRESETS", false, {}, enabled = false)
+                if (onToggle == null) LedToggle("ON", on, { onSettingsChange(settings.copy(enabled = !settings.enabled)) }, enabled = false, tooltip = "Equalizer ON / OFF")
+                LedToggle("AUTO", false, {}, enabled = false, tooltip = "Auto equalizer")
+                LedToggle("PRESETS", false, {}, enabled = false, tooltip = "Equalizer presets")
             }
         }
         Row(Modifier.fillMaxWidth().weight(1f)) {
             // Preamp
             if (EQ_TUNING_ENABLED) Column(Modifier.width(28.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                VSlider(settings.preamp, { onSettingsChange(settings.copy(preamp = it)) }, Modifier.weight(1f).fillMaxWidth())
+                VSlider(settings.preamp, { onSettingsChange(settings.copy(preamp = it)) }, Modifier.weight(1f).fillMaxWidth(), tooltip = "Preamp")
                 BasicText("PRE", style = LabelStyle)
             }
             if (EQ_TUNING_ENABLED) Spacer(Modifier.width(6.dp))
             // The visualizer, with the band sliders over it
             Column(Modifier.weight(1f).fillMaxHeight()) {
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        // The VU meters are their own little windows on the panel, so they get no LCD screen behind them.
-                        .then(if (visMode == VisMode.Vu) Modifier else Modifier
-                            .background(PsColors.LcdBackground, RoundedCornerShape(3.dp))
-                            .border(1.dp, PsColors.BevelDark, RoundedCornerShape(3.dp)))
-                        .clip(RoundedCornerShape(3.dp))
-                        .clickable(remember { MutableInteractionSource() }, indication = null) { onVisModeChange(visMode.next()) },
-                ) {
-                    Visualizer(visMode, levels, Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 3.dp), visTheme)
-                    if (EQ_TUNING_ENABLED && visMode == VisMode.Bands) Row(Modifier.fillMaxSize()) {
-                        settings.bands.forEachIndexed { i, v ->
-                            VSlider(v, { nv ->
-                                onSettingsChange(settings.copy(bands = settings.bands.toMutableList().also { it[i] = nv }))
-                            }, Modifier.weight(1f).fillMaxHeight())
+                WithTooltip(
+                    tooltip = "Visualizer (${visMode.label}) — Click to switch to ${visMode.next().label}",
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                ) { hovered ->
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            // The VU meters are their own little windows on the panel, so they get no LCD screen behind them.
+                            .then(if (visMode == VisMode.Vu) Modifier else Modifier
+                                .background(PsColors.LcdBackground, RoundedCornerShape(3.dp))
+                                .border(1.dp, if (hovered) PsColors.BevelLight else PsColors.BevelDark, RoundedCornerShape(3.dp)))
+                            .clip(RoundedCornerShape(3.dp))
+                            .clickable(remember { MutableInteractionSource() }, indication = null) { onVisModeChange(visMode.next()) },
+                    ) {
+                        Visualizer(visMode, levels, Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 3.dp), visTheme)
+                        if (EQ_TUNING_ENABLED && visMode == VisMode.Bands) Row(Modifier.fillMaxSize()) {
+                            settings.bands.forEachIndexed { i, v ->
+                                VSlider(v, { nv ->
+                                    onSettingsChange(settings.copy(bands = settings.bands.toMutableList().also { it[i] = nv }))
+                                }, Modifier.weight(1f).fillMaxHeight(), tooltip = "${SpectrumAnalyzer.BAND_LABELS[i]} Hz")
+                            }
                         }
                     }
                 }
