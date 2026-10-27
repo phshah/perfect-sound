@@ -34,7 +34,6 @@ import app.perfectsound.player.audio.SpectrumAnalyzer
 import app.perfectsound.player.ui.components.LabelStyle
 import app.perfectsound.player.ui.components.LedToggle
 import app.perfectsound.player.ui.components.VSlider
-import app.perfectsound.player.ui.components.WithTooltip
 import app.perfectsound.player.ui.theme.PsColors
 
 /**
@@ -117,27 +116,23 @@ fun EqSection(
             if (EQ_TUNING_ENABLED) Spacer(Modifier.width(6.dp))
             // The visualizer, with the band sliders over it
             Column(Modifier.weight(1f).fillMaxHeight()) {
-                WithTooltip(
-                    tooltip = "Visualizer (${visMode.label}) — Click to switch to ${visMode.next().label}",
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                ) { hovered ->
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            // The VU meters are their own little windows on the panel, so they get no LCD screen behind them.
-                            .then(if (visMode == VisMode.Vu) Modifier else Modifier
-                                .background(PsColors.LcdBackground, RoundedCornerShape(3.dp))
-                                .border(1.dp, if (hovered) PsColors.BevelLight else PsColors.BevelDark, RoundedCornerShape(3.dp)))
-                            .clip(RoundedCornerShape(3.dp))
-                            .clickable(remember { MutableInteractionSource() }, indication = null) { onVisModeChange(visMode.next()) },
-                    ) {
-                        Visualizer(visMode, levels, Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 3.dp), visTheme)
-                        if (EQ_TUNING_ENABLED && visMode == VisMode.Bands) Row(Modifier.fillMaxSize()) {
-                            settings.bands.forEachIndexed { i, v ->
-                                VSlider(v, { nv ->
-                                    onSettingsChange(settings.copy(bands = settings.bands.toMutableList().also { it[i] = nv }))
-                                }, Modifier.weight(1f).fillMaxHeight(), tooltip = "${SpectrumAnalyzer.BAND_LABELS[i]} Hz")
-                            }
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        // The VU meters are their own little windows on the panel, so they get no LCD screen behind them.
+                        .then(if (visMode == VisMode.Vu) Modifier else Modifier
+                            .background(PsColors.LcdBackground, RoundedCornerShape(3.dp))
+                            .border(1.dp, PsColors.BevelDark, RoundedCornerShape(3.dp)))
+                        .clip(RoundedCornerShape(3.dp))
+                        .clickable(remember { MutableInteractionSource() }, indication = null) { onVisModeChange(visMode.next()) },
+                ) {
+                    Visualizer(visMode, levels, Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 3.dp), visTheme)
+                    if (EQ_TUNING_ENABLED && visMode == VisMode.Bands) Row(Modifier.fillMaxSize()) {
+                        settings.bands.forEachIndexed { i, v ->
+                            VSlider(v, { nv ->
+                                onSettingsChange(settings.copy(bands = settings.bands.toMutableList().also { it[i] = nv }))
+                            }, Modifier.weight(1f).fillMaxHeight(), tooltip = "${SpectrumAnalyzer.BAND_LABELS[i]} Hz")
                         }
                     }
                 }

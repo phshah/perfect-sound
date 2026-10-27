@@ -238,27 +238,29 @@ fun LedToggle(
         isHoverActive -> PsColors.TitleText
         else -> PsColors.BevelLight
     }
-    Row(
-        modifier
-            .height(20.dp)
-            .background(face, RoundedCornerShape(3.dp))
-            .border(1.dp, borderColor, RoundedCornerShape(3.dp))
-            .hoverable(interaction)
-            .then(if (enabled) Modifier.pointerHoverIcon(PointerIcon.Hand) else Modifier)
-            .clickable(interaction, indication = null, enabled = enabled, onClick = onClick)
-            .padding(horizontal = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        // Centred, for when the button is given more width than its label needs.
-        horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
-    ) {
-        if (led) Box(Modifier.size(6.dp).background(if (on) PsColors.Lcd else PsColors.LcdDim, CircleShape))
-        if (icon != null) Canvas(Modifier.size(11.dp)) {
-            icon(if (!enabled) PsColors.TextDim else if (on) PsColors.Lcd else if (isHoverActive) Color.White else PsColors.Text)
+    Box(modifier, propagateMinConstraints = true) {
+        Row(
+            Modifier
+                .height(20.dp)
+                .background(face, RoundedCornerShape(3.dp))
+                .border(1.dp, borderColor, RoundedCornerShape(3.dp))
+                .hoverable(interaction)
+                .then(if (enabled) Modifier.pointerHoverIcon(PointerIcon.Hand) else Modifier)
+                .clickable(interaction, indication = null, enabled = enabled, onClick = onClick)
+                .padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            // Centred, for when the button is given more width than its label needs.
+            horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
+        ) {
+            if (led) Box(Modifier.size(6.dp).background(if (on) PsColors.Lcd else PsColors.LcdDim, CircleShape))
+            if (icon != null) Canvas(Modifier.size(11.dp)) {
+                icon(if (!enabled) PsColors.TextDim else if (on) PsColors.Lcd else if (isHoverActive) Color.White else PsColors.Text)
+            }
+            if (label.isNotEmpty()) BasicText(
+                label,
+                style = LabelStyle.copy(color = if (!enabled) PsColors.TextDim else if (isHoverActive) Color.White else PsColors.Text),
+            )
         }
-        if (label.isNotEmpty()) BasicText(
-            label,
-            style = LabelStyle.copy(color = if (!enabled) PsColors.TextDim else if (isHoverActive) Color.White else PsColors.Text),
-        )
         HoverTooltip(tooltip ?: label.takeIf { it.isNotEmpty() }, hovered = isHoverActive, pressed = pressed)
     }
 }
