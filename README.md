@@ -28,11 +28,11 @@
   <img src="https://img.shields.io/badge/developed_entirely_on-a_Googlebook-E0407E" alt="Developed entirely on a Googlebook">
 </p>
 
-<p align="center"><sub>A personal passion project by <a href="https://github.com/sanjaynathwani-blip">sanjaynathwani-blip</a>, proudly developed entirely on a Googlebook.
-Not affiliated with or endorsed by any employer, or by Winamp, Plex, Spotify, YouTube or Google (<a href="#about-this-project">more</a>).</sub></p>
+<p align="center"><sub>Originally created by <a href="https://github.com/sanjaynathwani-blip">sanjaynathwani-blip</a> · Plex Media Server streaming (LAN / Remote / Relay) added by <a href="https://github.com/phshah">phshah</a>, proudly developed on a Googlebook.<br>
+Not affiliated with or endorsed by any employer, or by Winamp, Plex, Spotify, YouTube or Google (<a href="#about-this-project--contributors">more</a>).</sub></p>
 
 <p align="center">
-  <img src="docs/images/hero.png" width="880" alt="Perfect Sound playing Neon Freeway by The Seven Segments: the seven-segment clock at 1:33, a synthwave sunset cover, green frequency bands and a six-track playlist">
+  <img src="docs/images/hero.png" width="880" alt="Perfect Sound playing Neon Freeway by The Seven Segments: the seven-segment clock at 1:33, PLEX source toggle and PLEX LIBRARY button, synthwave sunset cover, green frequency bands and a six-track playlist">
 </p>
 
 ## What it is
@@ -69,7 +69,12 @@ under each button show where you are, and Perfect Sound remembers both. For your
 
 ## Plex Media Server: Home & On the Go
 
-Pick **PLEX** in the source bar (or choose **ADD → Add from Plex…** in the playlist) to open the
+<p align="center">
+  <img src="docs/images/plex.png" width="880" alt="Perfect Sound in PLEX mode streaming from Home Server [LOCAL] alongside the retro LCD Plex Music Browser with album tracks, ON-THE-GO quality control and PLAY/+Q actions">
+  <br><sub>Streaming from a Plex Media Server: the player on the left shows the active server and route (<code>PLEX - HOME SERVER [LOCAL]</code>), while the Plex Music Browser on the right browses artists, albums, playlists and tracks with one-click <code>PLAY</code> and <code>+Q</code> queueing.</sub>
+</p>
+
+Pick **PLEX** in the source bar (or click **PLEX LIBRARY** / **ADD → Add from Plex…**) to open the
 retro LCD **Plex Music Browser**:
 
 - **Two ways to connect:**
@@ -218,12 +223,24 @@ Perfect Sound was made entirely on a Googlebook, in its built-in Linux Terminal:
   [`tools/readme_images.py`](tools/readme_images.py) turns window captures into the images on this
   page. The logo is [`brand/perfect-sound-logo.svg`](brand/perfect-sound-logo.svg).
 
-## About this project
+## About this project & Contributors
 
-Perfect Sound is my personal passion project, made by me,
-[sanjaynathwani-blip](https://github.com/sanjaynathwani-blip), in my own time. It has no
-affiliation with my employer: my employer didn't make, sponsor, review or endorse it, and nothing
-here speaks for my employer or endorses its products.
+### Original Author — [sanjaynathwani-blip](https://github.com/sanjaynathwani-blip) (`v0.1.0` – `v0.4.3`)
+Perfect Sound was created as a personal passion project by
+[sanjaynathwani-blip](https://github.com/sanjaynathwani-blip), built from scratch on a Googlebook:
+- Custom vector-drawn '90s desktop interface in Jetpack Compose (seven-segment LCD clock, marquee, bevelled controls, resizeable desktop layout, and keyboard shortcuts).
+- Local file and folder playback via AndroidX Media3 with gapless playback, drag-and-drop playlist management, and persistent queue restoration.
+- Built-in 10-band equalizer and six real-time visualizer modes (`BANDS`, `SPECTRUM`, `LED`, `CURVE`, `SCOPE`, `VU METER`) across four colour themes.
+- Remote mode for following and controlling **Spotify**, **YouTube Music**, and **Chrome** web players via `MediaSessionManager` and `AudioPlaybackCapture`.
+
+### Plex Media Server Integration — [phshah](https://github.com/phshah) (`v0.5.0`)
+[phshah](https://github.com/phshah) extended Perfect Sound with native **Plex Media Server** audio streaming (`app/src/main/java/app/perfectsound/player/plex/`):
+- **Plex OAuth & PIN Authentication:** browser OAuth (`strong=true`) and 4-character `plex.tv/link` PIN sign-in with automatic server discovery, plus manual server URL + `X-Plex-Token` support.
+- **Seamless Home & On-the-Go Roaming:** concurrent endpoint probing (`LOCAL` LAN → `REMOTE` Direct → `RELAY` fallback), live `ConnectivityManager.NetworkCallback` handoff across Wi-Fi and cellular networks, and `*.plex.direct` TLS verification over direct LAN IPs.
+- **On-the-Go Bitrate Control:** lossless direct streaming on local LAN and configurable remote transcoding (`ORIG`, `320K`, `192K`, `128K`) via Plex's Universal Audio Transcoder.
+- **Retro LCD Plex Music Browser:** browse and search artists, albums, playlists, and tracks across Plex music libraries (`PlexBrowserDialog`), with Media3 `ResolvingDataSource` token-safe `plex://` queue persistence and authenticated cover art loading.
+
+This project has no affiliation with any employer: no employer made, sponsored, reviewed or endorsed it, and nothing here speaks for any employer or endorses its products.
 
 It's inspired by the desktop music players of the late '90s but shares no code or artwork with
 any of them. Winamp is a trademark of its owners, Plex is a trademark of Plex, Inc., Spotify is a
@@ -235,9 +252,7 @@ they're named only to describe what Perfect Sound works with, and none of them m
 - **Perfect Sound's own code**, the logo, the tools and the demo music are under the
   [MIT License](LICENSE).
 - The libraries built into the app (AndroidX Media3, Jetpack Compose, AndroidX, the Kotlin
-  standard library, kotlinx.coroutines and Guava) are under the **Apache License 2.0**.
+  standard library, kotlinx.coroutines and Guava, and Square OkHttp) are under the **Apache License 2.0**.
 
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) lists every component inside the app, and
 [`licenses/`](licenses/) holds the license text.
-
-<p align="center"><sub>With a little help from Claude.</sub></p>
