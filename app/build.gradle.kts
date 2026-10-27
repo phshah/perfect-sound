@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    jacoco
 }
 
 android {
@@ -14,8 +15,9 @@ android {
         applicationId = "app.perfectsound.player"
         minSdk = 29 // audio playback capture needs Android 10
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.4.3"
+        versionCode = 10
+        versionName = "0.5.0"
+        setProperty("archivesBaseName", "PerfectSound")
     }
 
     // The release key lives outside the repo; without it, release builds are left unsigned.
@@ -35,6 +37,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug" // installs alongside the release build
+            enableUnitTestCoverage = true
         }
         release {
             signingConfig = signingConfigs.findByName("release")
@@ -56,6 +59,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -72,4 +79,6 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.androidx.media) // shuffle/repeat of other apps' sessions
     testImplementation(libs.junit)
+    testImplementation("org.json:json:20231013")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
 }

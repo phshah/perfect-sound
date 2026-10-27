@@ -57,6 +57,7 @@ class TrackImporter(private val context: Context) {
         }
     }
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private fun toMediaItem(uri: Uri): MediaItem {
         var title: String? = null
         var artist: String? = null

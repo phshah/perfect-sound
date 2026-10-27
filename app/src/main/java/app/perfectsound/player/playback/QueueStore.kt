@@ -23,6 +23,7 @@ class QueueStore(context: Context) {
 
     private val file = File(context.filesDir, "queue.json")
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     fun save(player: Player) {
         val items = JSONArray()
         for (i in 0 until player.mediaItemCount) {
@@ -35,7 +36,8 @@ class QueueStore(context: Context) {
                 .putOpt("title", m.title?.toString())
                 .putOpt("artist", m.artist?.toString())
                 .putOpt("album", m.albumTitle?.toString())
-                .putOpt("durationMs", m.durationMs))
+                .putOpt("durationMs", m.durationMs)
+                .putOpt("artworkUri", m.artworkUri?.toString()))
         }
         val json = JSONObject()
             .put("items", items)
@@ -50,6 +52,7 @@ class QueueStore(context: Context) {
         tmp.renameTo(file)
     }
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     fun load(): Saved? = runCatching {
         if (!file.exists()) return null
         val json = JSONObject(file.readText())
@@ -57,6 +60,7 @@ class QueueStore(context: Context) {
         val items = (0 until array.length()).map { i ->
             val o = array.getJSONObject(i)
             val uri = Uri.parse(o.getString("uri"))
+            val artworkUri = o.optString("artworkUri").ifEmpty { null }?.let(Uri::parse)
             MediaItem.Builder()
                 .setMediaId(o.getString("id"))
                 .setUri(uri)
@@ -66,6 +70,7 @@ class QueueStore(context: Context) {
                     .setArtist(o.optString("artist").ifEmpty { null })
                     .setAlbumTitle(o.optString("album").ifEmpty { null })
                     .setDurationMs(if (o.has("durationMs")) o.getLong("durationMs") else null)
+                    .setArtworkUri(artworkUri)
                     .build())
                 .build()
         }

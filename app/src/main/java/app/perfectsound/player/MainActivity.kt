@@ -33,6 +33,7 @@ import app.perfectsound.player.capture.PlaybackCaptureService
 import app.perfectsound.player.library.TrackImporter
 import app.perfectsound.player.library.loadEmbeddedArt
 import app.perfectsound.player.playback.PlayerConnection
+import app.perfectsound.player.plex.PlexConnectionManager
 import app.perfectsound.player.remote.RemoteSessions
 import app.perfectsound.player.ui.EqSettings
 import app.perfectsound.player.ui.MainPanelActions
@@ -43,6 +44,7 @@ import app.perfectsound.player.ui.PanelMessage
 import app.perfectsound.player.ui.PerfectSoundApp
 import app.perfectsound.player.ui.PlaylistActions
 import app.perfectsound.player.ui.PlaylistPanel
+import app.perfectsound.player.ui.PlexBrowserDialog
 import app.perfectsound.player.ui.Source
 import app.perfectsound.player.ui.SourceOption
 import app.perfectsound.player.ui.UiPrefs
@@ -57,11 +59,13 @@ class MainActivity : ComponentActivity() {
     private lateinit var player: PlayerConnection
     private lateinit var remote: RemoteSessions
     private lateinit var importer: TrackImporter
+    private lateinit var plexManager: PlexConnectionManager
     private lateinit var prefs: UiPrefs
     private lateinit var eq: MutableStateFlow<EqSettings>
     private lateinit var source: MutableStateFlow<Source>
     /** Eject/open replaces the playlist and plays; ADD appends. */
     private var replaceOnImport = false
+    private val showPlexDialog = MutableStateFlow(false)
 
     private val pickFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> import(uris) }
     private val pickFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -81,6 +85,7 @@ class MainActivity : ComponentActivity() {
         player = PlayerConnection(applicationContext, lifecycleScope)
         remote = RemoteSessions(applicationContext)
         importer = TrackImporter(applicationContext)
+        plexManager = PlexConnectionManager.getInstance(applicationContext)
         prefs = UiPrefs(applicationContext)
         eq = MutableStateFlow(prefs.eq)
         source = MutableStateFlow(prefs.source)
@@ -90,6 +95,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val local by player.state.collectAsStateWithLifecycle()
             val remoteState by remote.state.collectAsStateWithLifecycle()
+            val plexState by plexManager.state.collectAsStateWithLifecycle()
+            val plexDialogOpen by showPlexDialog.collectAsStateWithLifecycle()
             val levels by AudioLevels.state.collectAsStateWithLifecycle()
             val eqSettings by eq.collectAsStateWithLifecycle()
             val currentSource by source.collectAsStateWithLifecycle()
@@ -111,16 +118,17 @@ class MainActivity : ComponentActivity() {
             }
 
             val display = when (val s = currentSource) {
-                Source.Local -> local.toDisplay()
+                Source.Local, Source.Plex -> local.toDisplay()
                 is Source.Remote -> remoteState.nowPlaying[s.app].let { np ->
                     np.toDisplay(s.app, np?.positionAt(now) ?: 0, systemVolume)
                 }
             }
-            val sources = listOf(SourceOption(Source.Local, "LOCAL", true)) +
-                RemoteSessions.App.entries.map { app ->
-                    SourceOption(Source.Remote(app), app.button,
-                        available = app in remoteState.installed)
-                }
+            val sources = listOf(
+                SourceOption(Source.Local, "LOCAL", true),
+                SourceOption(Source.Plex, "PLEX", true),
+            ) + RemoteSessions.App.entries.map { app ->
+                SourceOption(Source.Remote(app), app.button, available = app in remoteState.installed)
+            }
             val toggleCapture = { if (capturing) PlaybackCaptureService.stop(this) else startCapture() }
 
             PerfectSoundApp(
@@ -136,7 +144,11 @@ class MainActivity : ComponentActivity() {
                     override fun stop() = route({ player.stop() }) { remote.stop(it) }
                     override fun next() = route({ player.next() }) { remote.next(it) }
                     override fun previous() = route({ player.previous() }) { remote.previous(it) }
-                    override fun open() = openFiles(replace = true)
+                    override fun open() = if (currentSource == Source.Plex) {
+                        showPlexDialog.value = true
+                    } else {
+                        openFiles(replace = true)
+                    }
                     override fun seekTo(positionMs: Long) = route({ player.seekTo(positionMs) }) { remote.seekTo(it, positionMs) }
                     override fun setVolume(volume: Float) = route({ player.setVolume(volume) }) {
                         remote.setSystemVolume(volume)
@@ -149,8 +161,12 @@ class MainActivity : ComponentActivity() {
                     // Picking a streaming app also brings it up, so there's something to play.
                     // Clicking it again while selected brings it back to the front.
                     override fun selectSource(source: Source) {
+                        val wasAlreadySelected = source == this@MainActivity.source.value
                         switchSource(source)
                         if (source is Source.Remote) remote.launch(source.app)
+                        if (source == Source.Plex && (wasAlreadySelected || !plexState.isConnected || local.currentTrack == null)) {
+                            showPlexDialog.value = true
+                        }
                     }
                     override fun seekBy(deltaMs: Long) = route({ player.seekBy(deltaMs) }) { app ->
                         val np = remote.state.value.nowPlaying[app]
@@ -162,6 +178,7 @@ class MainActivity : ComponentActivity() {
                 nowPlaying = { modifier ->
                     val panel = when (val s = currentSource) {
                         Source.Local -> localNowPlaying(local)
+                        Source.Plex -> plexNowPlaying(local, plexState)
                         is Source.Remote -> remoteNowPlaying(s.app, remoteState, capturing, toggleCapture)
                     }
                     NowPlayingPanel(
@@ -183,9 +200,19 @@ class MainActivity : ComponentActivity() {
                         onEqToggle = panel.onEqToggle,
                     )
                 },
-                playlist = if (currentSource == Source.Local) { modifier -> PlaylistPanel(local, playlistActions, modifier) } else null,
+                playlist = if (currentSource.isBuiltIn) { modifier -> PlaylistPanel(local, playlistActions, modifier) } else null,
                 onDrop = ::onFilesDropped,
             )
+
+            if (plexDialogOpen) {
+                PlexBrowserDialog(
+                    plexState = plexState,
+                    plexManager = plexManager,
+                    onOpenBrowserUrl = ::openBrowserUrl,
+                    onPlayTracks = { items, replace -> addPlexItems(items, replace) },
+                    onDismiss = { showPlexDialog.value = false },
+                )
+            }
         }
     }
 
@@ -204,23 +231,92 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun localNowPlaying(state: PlayerConnection.State): NowPlayingContent {
         val track = state.currentTrack
-        val art by produceState<ImageBitmap?>(null, track?.uri) {
-            value = track?.uri?.let { loadEmbeddedArt(applicationContext, it)?.asImageBitmap() }
+        val art by produceState<ImageBitmap?>(null, track?.uri, track?.artworkUri) {
+            value = track?.uri?.let {
+                loadEmbeddedArt(applicationContext, it, artworkUri = track.artworkUri)?.asImageBitmap()
+            }
         }
         val buttons = listOf(
             PanelButton("OPEN FILES") { openFiles(replace = true) },
             PanelButton("ADD FOLDER") { pickFolder.launch(null) },
+            PanelButton("PLEX LIBRARY") { showPlexDialog.value = true },
         )
         return if (track == null) NowPlayingContent(
             label = "NOW PLAYING",
             info = NowPlayingInfo(),
-            message = PanelMessage("Nothing playing", "Open some music files, add a folder, or drop files onto the window."),
+            message = PanelMessage("Nothing playing", "Open some music files, add a folder, browse Plex, or drop files onto the window."),
             buttons = buttons,
         ) else NowPlayingContent(
             label = "NOW PLAYING",
             info = NowPlayingInfo(track.title, track.artist, track.album, art),
             buttons = buttons,
         )
+    }
+
+    @Composable
+    private fun plexNowPlaying(
+        state: PlayerConnection.State,
+        plexState: PlexConnectionManager.State,
+    ): NowPlayingContent {
+        val track = state.currentTrack
+        val art by produceState<ImageBitmap?>(null, track?.uri, track?.artworkUri) {
+            value = track?.uri?.let {
+                loadEmbeddedArt(applicationContext, it, artworkUri = track.artworkUri)?.asImageBitmap()
+            }
+        }
+        val label = when {
+            plexState.isConnected -> {
+                val srv = plexState.selectedServer?.name?.uppercase() ?: "PLEX"
+                val mode = plexState.connectionType?.badge ?: "ONLINE"
+                "PLEX · $srv [$mode]"
+            }
+            plexState.connecting -> "PLEX · CONNECTING…"
+            else -> "PLEX MEDIA SERVER"
+        }
+        val buttons = listOf(
+            PanelButton("BROWSE PLEX", on = plexState.isConnected) { showPlexDialog.value = true },
+            PanelButton(
+                "ON-THE-GO: ${plexState.remoteQuality.label}",
+                on = plexState.remoteQuality.kbps != null,
+                onClick = plexManager::cycleRemoteQuality,
+            ),
+        )
+        val connectionHint = if (plexState.isConnected) {
+            "Connected via ${plexState.connectionType?.badge ?: "PLEX"} (${plexState.selectedServer?.name.orEmpty()}) · On-the-go quality: ${plexState.remoteQuality.label}"
+        } else null
+
+        return when {
+            !plexState.isSignedIn -> NowPlayingContent(
+                label = label,
+                info = NowPlayingInfo(),
+                message = PanelMessage(
+                    "Connect your Plex Media Server",
+                    "Stream your music library directly in Perfect Sound — automatically uses Local LAN at home and Remote Direct or Plex Relay on the go.",
+                    listOf(PanelButton("CONNECT PLEX", on = true) { showPlexDialog.value = true }),
+                ),
+                buttons = buttons,
+            )
+            track == null -> NowPlayingContent(
+                label = label,
+                info = NowPlayingInfo(),
+                message = PanelMessage(
+                    if (plexState.isConnected) "Connected to ${plexState.selectedServer?.name}" else (plexState.error ?: "Connecting to Plex…"),
+                    if (plexState.isConnected) {
+                        "Mode: ${plexState.connectionType?.badge ?: "ONLINE"} · Browse your artists, albums, or playlists to start streaming."
+                    } else {
+                        "Check your network or open Plex Setup to refresh server connections."
+                    },
+                    listOf(PanelButton("BROWSE PLEX", on = true) { showPlexDialog.value = true }),
+                ),
+                buttons = buttons,
+            )
+            else -> NowPlayingContent(
+                label = label,
+                info = NowPlayingInfo(track.title, track.artist, track.album, art),
+                buttons = buttons,
+                hint = connectionHint,
+            )
+        }
     }
 
     @Composable
@@ -327,6 +423,7 @@ class MainActivity : ComponentActivity() {
         override fun playAt(index: Int) { player.playAt(index) }
         override fun addFiles() = openFiles(replace = false)
         override fun addFolder() = pickFolder.launch(null)
+        override fun addPlex() { showPlexDialog.value = true }
         override fun remove(indices: Set<Int>) { player.removeTracks(indices) }
         override fun clear() { player.clear() }
         override fun move(from: Int, to: Int) { player.moveTrack(from, to) }
@@ -342,18 +439,20 @@ class MainActivity : ComponentActivity() {
         return true
     }
 
-    /** Changes source, pausing the old one first so two sources never play at once. */
+    /** Changes source, pausing the old one first when switching between built-in and remote apps. */
     private fun switchSource(new: Source) {
-        if (new == source.value) return
-        route({ player.pause() }) { remote.pause(it) }
+        val old = source.value
+        if (new == old) return
+        if (old.isBuiltIn && new is Source.Remote) player.pause()
+        else if (old is Source.Remote) remote.pause(old.app)
         source.value = new
         prefs.source = new
     }
 
-    /** Sends a command to the built-in player or to the streaming app being remote-controlled. */
+    /** Sends a command to the built-in player (Local / Plex) or to the streaming app being remote-controlled. */
     private inline fun route(local: () -> Unit, remoteCommand: (RemoteSessions.App) -> Unit) {
         when (val s = source.value) {
-            Source.Local -> local()
+            Source.Local, Source.Plex -> local()
             is Source.Remote -> remoteCommand(s.app)
         }
     }
@@ -370,7 +469,7 @@ class MainActivity : ComponentActivity() {
 
     private fun addItems(items: List<MediaItem>) {
         if (items.isEmpty()) return
-        switchSource(Source.Local)
+        if (!source.value.isBuiltIn) switchSource(Source.Local)
         if (replaceOnImport) {
             replaceOnImport = false
             player.clear()
@@ -378,6 +477,26 @@ class MainActivity : ComponentActivity() {
             player.playAt(0)
         } else {
             player.addTracks(items)
+        }
+    }
+
+    private fun addPlexItems(items: List<MediaItem>, replace: Boolean) {
+        if (items.isEmpty()) return
+        switchSource(Source.Plex)
+        if (replace) {
+            player.clear()
+            player.addTracks(items)
+            player.playAt(0)
+        } else {
+            val wasEmpty = player.state.value.playlist.isEmpty()
+            player.addTracks(items)
+            if (wasEmpty) player.playAt(0)
+        }
+    }
+
+    private fun openBrowserUrl(url: String) {
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
 

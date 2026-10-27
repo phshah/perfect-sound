@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Network permissions for streaming audio from Plex Media Server (LAN and remote). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!-- Playback capture (EQ levels for Spotify / Chrome): Android requires RECORD_AUDIO
          for AudioPlaybackCapture, plus a mediaProjection foreground service. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />

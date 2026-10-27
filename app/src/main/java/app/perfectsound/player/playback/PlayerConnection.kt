@@ -10,6 +10,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import app.perfectsound.player.plex.PlexUri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -30,6 +31,7 @@ class PlayerConnection(private val context: Context, private val scope: Coroutin
         val durationMs: Long,
         val album: String? = null,
         val uri: Uri? = null,
+        val artworkUri: Uri? = null,
     ) {
         val displayName: String get() = if (artist.isNullOrBlank()) title else "$artist - $title"
     }
@@ -160,9 +162,11 @@ class PlayerConnection(private val context: Context, private val scope: Coroutin
         clearMediaItems()
     }
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private fun refresh() {
         val c = controller ?: return
         val playlist = (0 until c.mediaItemCount).map { c.getMediaItemAt(it).toTrack() }
+        val currentTrack = playlist.getOrNull(c.currentMediaItemIndex)
         val format = c.currentTracks.groups
             .firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
             ?.getTrackFormat(0)
@@ -174,14 +178,16 @@ class PlayerConnection(private val context: Context, private val scope: Coroutin
             isPlaying = c.isPlaying,
             stopped = stopped,
             positionMs = c.currentPosition,
-            durationMs = c.duration.takeIf { it != C.TIME_UNSET } ?: playlist.getOrNull(c.currentMediaItemIndex)?.durationMs ?: 0,
+            durationMs = c.duration.takeIf { it != C.TIME_UNSET } ?: currentTrack?.durationMs ?: 0,
             volume = c.volume,
             shuffle = c.shuffleModeEnabled,
             repeatMode = c.repeatMode,
             bitrateKbps = format?.let { f ->
                 (if (f.bitrate != androidx.media3.common.Format.NO_VALUE) f.bitrate else f.averageBitrate)
                     .takeIf { it > 0 }?.let { it / 1000 }
-            } ?: format?.let { averageKbps(playlist.getOrNull(c.currentMediaItemIndex)?.uri, c.duration) },
+            } ?: currentTrack?.uri?.let { u ->
+                PlexUri.parseTrackUri(u.toString())?.bitrateKbps
+            } ?: format?.let { averageKbps(currentTrack?.uri, c.duration) },
             sampleRateHz = format?.sampleRate?.takeIf { it > 0 },
             channels = format?.channelCount?.takeIf { it > 0 },
             error = error,
@@ -195,7 +201,7 @@ class PlayerConnection(private val context: Context, private val scope: Coroutin
      * (FLAC, WAV), like the classic desktop players show.
      */
     private fun averageKbps(uri: Uri?, durationMs: Long): Int? {
-        if (uri == null || durationMs <= 0 || durationMs == C.TIME_UNSET) return null
+        if (uri == null || PlexUri.isPlexUri(uri) || durationMs <= 0 || durationMs == C.TIME_UNSET) return null
         val size = fileSizes.getOrPut(uri) {
             runCatching {
                 context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use {
@@ -206,12 +212,14 @@ class PlayerConnection(private val context: Context, private val scope: Coroutin
         return (size * 8 / durationMs).toInt().takeIf { it > 0 }
     }
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private fun MediaItem.toTrack() = Track(
         id = mediaId,
         title = mediaMetadata.title?.toString() ?: requestMetadata.mediaUri?.lastPathSegment ?: "Unknown",
         artist = mediaMetadata.artist?.toString(),
         durationMs = mediaMetadata.durationMs ?: 0,
         album = mediaMetadata.albumTitle?.toString()?.takeIf { it.isNotBlank() },
-        uri = requestMetadata.mediaUri,
+        uri = requestMetadata.mediaUri ?: localConfiguration?.uri,
+        artworkUri = mediaMetadata.artworkUri,
     )
 }

@@ -12,16 +12,23 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import app.perfectsound.player.MainActivity
 import app.perfectsound.player.audio.AudioLevels
 import app.perfectsound.player.audio.SpectrumAnalyzer
 import app.perfectsound.player.audio.SpectrumTapProcessor
+import app.perfectsound.player.plex.PlexConnectionManager
+import app.perfectsound.player.plex.PlexTlsHelper
+import app.perfectsound.player.plex.PlexUri
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +43,7 @@ import kotlin.math.abs
 import kotlin.math.log10
 import kotlin.math.sqrt
 
-/** Plays local audio in the background with a media notification, lock-screen and media-key controls. */
+/** Plays local and Plex audio in the background with a media notification, lock-screen and media-key controls. */
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
 
@@ -45,24 +52,44 @@ class PlaybackService : MediaSessionService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var levelsJob: Job? = null
     private lateinit var queueStore: QueueStore
+    private lateinit var plexManager: PlexConnectionManager
     private val main = Handler(Looper.getMainLooper())
     private val saveQueue = Runnable { session?.player?.let(queueStore::save) }
     /** Tracks that failed in a row; stops skipping once every track has failed. */
     private var consecutiveErrors = 0
+    /** Tracks whether we already re-probed Plex endpoints for the current media item after a network switch. */
+    private var retriedPlexMediaId: String? = null
 
     override fun onCreate() {
         super.onCreate()
+        PlexTlsHelper.installIfNeeded()
+        plexManager = PlexConnectionManager.getInstance(this)
         val renderers = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink =
                 DefaultAudioSink.Builder(context).setAudioProcessors(arrayOf(tap)).build()
         }
+        val httpFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent("PerfectSound/0.5.0 (Android)")
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(8_000)
+            .setReadTimeoutMs(12_000)
+        val baseDataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
+        val resolvingDataSourceFactory = ResolvingDataSource.Factory(baseDataSourceFactory) { dataSpec ->
+            if (PlexUri.isPlexUri(dataSpec.uri)) {
+                val resolved = plexManager.resolvePlaybackUriBlocking(dataSpec.uri)
+                dataSpec.buildUpon().setUri(resolved).build()
+            } else {
+                dataSpec
+            }
+        }
         val player = ExoPlayer.Builder(this, renderers)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(resolvingDataSourceFactory))
             .setAudioAttributes(AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                 .build(), /* handleAudioFocus = */ true)
             .setHandleAudioBecomingNoisy(true)
-            .setWakeMode(C.WAKE_MODE_LOCAL)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
         queueStore = QueueStore(this)
         queueStore.load()?.let { saved ->
@@ -85,11 +112,31 @@ class PlaybackService : MediaSessionService() {
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) consecutiveErrors = 0
+                if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
+                    consecutiveErrors = 0
+                    retriedPlexMediaId = null
+                }
             }
 
-            // Skip tracks that can't be played (deleted file, lost permission, unsupported format).
+            // On network switches (Wi-Fi <-> mobile data), re-probe Plex endpoints once before skipping.
             override fun onPlayerError(error: PlaybackException) {
+                val currentItem = player.currentMediaItem
+                val currentUri = currentItem?.localConfiguration?.uri ?: currentItem?.requestMetadata?.mediaUri
+                if (currentItem != null && PlexUri.isPlexUri(currentUri) && retriedPlexMediaId != currentItem.mediaId) {
+                    retriedPlexMediaId = currentItem.mediaId
+                    val resumePos = player.currentPosition
+                    scope.launch(Dispatchers.IO) {
+                        plexManager.resolvePlaybackUriBlocking(currentUri!!, forceReprobe = true)
+                        main.post {
+                            if (player.currentMediaItem?.mediaId == currentItem.mediaId) {
+                                player.seekTo(resumePos)
+                                player.prepare()
+                                player.play()
+                            }
+                        }
+                    }
+                    return
+                }
                 consecutiveErrors++
                 if (consecutiveErrors < player.mediaItemCount && player.hasNextMediaItem()) {
                     player.seekToNextMediaItem()

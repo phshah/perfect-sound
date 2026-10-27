@@ -190,6 +190,7 @@ fun MainPanel(
 
 private fun sourceIcon(source: Source) = when (source) {
     Source.Local -> Icons.Note
+    Source.Plex -> Icons.Plex
     is Source.Remote -> when (source.app) {
         RemoteSessions.App.Spotify -> Icons.Waves
         RemoteSessions.App.YouTubeMusic -> Icons.PlayRing

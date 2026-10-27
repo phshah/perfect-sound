@@ -5,10 +5,13 @@ import androidx.media3.common.Player
 import app.perfectsound.player.playback.PlayerConnection
 import app.perfectsound.player.remote.RemoteSessions
 
-/** Where playback comes from: the built-in player or a streaming app in remote mode. */
+/** Where playback comes from: the built-in player (local files or Plex server) or a streaming app in remote mode. */
 sealed interface Source {
     data object Local : Source
+    data object Plex : Source
     data class Remote(val app: RemoteSessions.App) : Source
+
+    val isBuiltIn: Boolean get() = this == Local || this == Plex
 }
 
 enum class Repeat { Off, All, One }

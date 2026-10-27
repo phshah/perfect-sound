@@ -106,4 +106,19 @@ object Icons {
         drawLine(c, Offset(center.x - r, center.y), Offset(center.x + r, center.y), line.width)
         drawLine(c, Offset(center.x, center.y - r), Offset(center.x, center.y + r), line.width)
     }
+
+    /** Plex: a bold right-pointing chevron inside a server frame. */
+    val Plex: DrawScope.(Color) -> Unit = { c ->
+        val w = size.width
+        val h = size.height
+        drawPath(Path().apply {
+            moveTo(w * 0.22f, h * 0.08f)
+            lineTo(w * 0.52f, h * 0.08f)
+            lineTo(w * 0.82f, h * 0.5f)
+            lineTo(w * 0.52f, h * 0.92f)
+            lineTo(w * 0.22f, h * 0.92f)
+            lineTo(w * 0.52f, h * 0.5f)
+            close()
+        }, c)
+    }
 }

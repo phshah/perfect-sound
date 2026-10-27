@@ -11,10 +11,16 @@ class UiPrefs(context: Context) {
     private val prefs = context.getSharedPreferences("ui", Context.MODE_PRIVATE)
 
     var source: Source
-        get() = prefs.getString("source", null)
-            ?.let { name -> RemoteSessions.App.entries.firstOrNull { it.name == name } }
-            ?.let { Source.Remote(it) } ?: Source.Local
-        set(value) = prefs.edit().putString("source", (value as? Source.Remote)?.app?.name ?: "Local").apply()
+        get() = when (val name = prefs.getString("source", null)) {
+            "Plex" -> Source.Plex
+            else -> name?.let { n -> RemoteSessions.App.entries.firstOrNull { it.name == n } }
+                ?.let { Source.Remote(it) } ?: Source.Local
+        }
+        set(value) = prefs.edit().putString("source", when (value) {
+            Source.Local -> "Local"
+            Source.Plex -> "Plex"
+            is Source.Remote -> value.app.name
+        }).apply()
 
     var equalizerVisible: Boolean
         get() = prefs.getBoolean("equalizerVisible", true)

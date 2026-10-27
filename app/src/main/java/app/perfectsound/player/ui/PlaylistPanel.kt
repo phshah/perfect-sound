@@ -70,6 +70,7 @@ interface PlaylistActions {
     fun playAt(index: Int)
     fun addFiles()
     fun addFolder()
+    fun addPlex()
     fun remove(indices: Set<Int>)
     fun clear()
     fun move(from: Int, to: Int)
@@ -211,7 +212,7 @@ fun PlaylistPanel(
         ) {
             if (state.playlist.isEmpty()) {
                 BasicText(
-                    "Add music with the ADD button, drop files here, or open files with the eject button (L).",
+                    "Add music with the ADD button (files, folders, or Plex), drop files here, or open files with the eject button (L).",
                     style = LcdTextStyle.copy(color = PsColors.TextDim),
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                 )
@@ -234,6 +235,7 @@ fun PlaylistPanel(
                         MenuItem("Select all", enabled = count > 0) { selected = (0 until count).toSet() },
                         MenuItem("Add files…", onClick = actions::addFiles),
                         MenuItem("Add folder…", onClick = actions::addFolder),
+                        MenuItem("Add from Plex…", onClick = actions::addPlex),
                         MenuItem("Clear playlist", enabled = count > 0) { actions.clear(); selected = emptySet() },
                     ),
                     offset = IntOffset(pos.x.roundToInt(), pos.y.roundToInt()),
@@ -249,8 +251,12 @@ fun PlaylistPanel(
             Box {
                 LedToggle("ADD", addMenu, { addMenu = true })
                 if (addMenu) PopupMenu(
-                    listOf(MenuItem("Add files…", onClick = actions::addFiles), MenuItem("Add folder…", onClick = actions::addFolder)),
-                    offset = IntOffset(0, -170),
+                    listOf(
+                        MenuItem("Add files…", onClick = actions::addFiles),
+                        MenuItem("Add folder…", onClick = actions::addFolder),
+                        MenuItem("Add from Plex…", onClick = actions::addPlex),
+                    ),
+                    offset = IntOffset(0, -210),
                     onDismiss = { addMenu = false },
                 )
             }
