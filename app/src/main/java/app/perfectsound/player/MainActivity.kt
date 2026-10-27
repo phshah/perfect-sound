@@ -177,7 +177,9 @@ class MainActivity : ComponentActivity() {
                 },
                 nowPlaying = { modifier ->
                     val panel = when (val s = currentSource) {
-                        Source.Local -> localNowPlaying(local)
+                        Source.Local -> localNowPlaying(local, playlistVisible) {
+                            playlistVisible = !playlistVisible; prefs.playlistVisible = playlistVisible
+                        }
                         Source.Plex -> plexNowPlaying(local, plexState, playlistVisible) {
                             playlistVisible = !playlistVisible; prefs.playlistVisible = playlistVisible
                         }
@@ -231,7 +233,11 @@ class MainActivity : ComponentActivity() {
     )
 
     @Composable
-    private fun localNowPlaying(state: PlayerConnection.State): NowPlayingContent {
+    private fun localNowPlaying(
+        state: PlayerConnection.State,
+        playlistVisible: Boolean,
+        onTogglePlaylist: () -> Unit,
+    ): NowPlayingContent {
         val track = state.currentTrack
         val art by produceState<ImageBitmap?>(null, track?.uri, track?.artworkUri) {
             value = track?.uri?.let {
@@ -241,12 +247,17 @@ class MainActivity : ComponentActivity() {
         val buttons = listOf(
             PanelButton("OPEN FILES", tooltip = "Open audio files and replace the current playlist (L)") { openFiles(replace = true) },
             PanelButton("ADD FOLDER", tooltip = "Add all audio files from a folder to the playlist (Shift+L)") { pickFolder.launch(null) },
-            PanelButton("PLEX LIBRARY", tooltip = "Browse and stream music from your Plex Media Server") { showPlexDialog.value = true },
+            PanelButton(
+                "PLAYLIST",
+                on = playlistVisible,
+                tooltip = if (playlistVisible) "Hide the playlist (Alt+E)" else "Show the playlist (Alt+E)",
+                onClick = onTogglePlaylist,
+            ),
         )
         return if (track == null) NowPlayingContent(
             label = "NOW PLAYING",
             info = NowPlayingInfo(),
-            message = PanelMessage("Nothing playing", "Open some music files, add a folder, browse Plex, or drop files onto the window."),
+            message = PanelMessage("Nothing playing", "Open some music files, add a folder, or drop files onto the window."),
             buttons = buttons,
         ) else NowPlayingContent(
             label = "NOW PLAYING",
