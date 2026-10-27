@@ -178,7 +178,9 @@ class MainActivity : ComponentActivity() {
                 nowPlaying = { modifier ->
                     val panel = when (val s = currentSource) {
                         Source.Local -> localNowPlaying(local)
-                        Source.Plex -> plexNowPlaying(local, plexState)
+                        Source.Plex -> plexNowPlaying(local, plexState, playlistVisible) {
+                            playlistVisible = !playlistVisible; prefs.playlistVisible = playlistVisible
+                        }
                         is Source.Remote -> remoteNowPlaying(s.app, remoteState, capturing, toggleCapture)
                     }
                     NowPlayingPanel(
@@ -257,6 +259,8 @@ class MainActivity : ComponentActivity() {
     private fun plexNowPlaying(
         state: PlayerConnection.State,
         plexState: PlexConnectionManager.State,
+        playlistVisible: Boolean,
+        onTogglePlaylist: () -> Unit,
     ): NowPlayingContent {
         val track = state.currentTrack
         val art by produceState<ImageBitmap?>(null, track?.uri, track?.artworkUri) {
@@ -284,6 +288,12 @@ class MainActivity : ComponentActivity() {
                 on = plexState.remoteQuality.kbps != null,
                 tooltip = "Remote / Relay streaming quality (${plexState.remoteQuality.label}) — Click to cycle ORIG / 320K / 192K / 128K",
                 onClick = plexManager::cycleRemoteQuality,
+            ),
+            PanelButton(
+                "PLAYLIST",
+                on = playlistVisible,
+                tooltip = if (playlistVisible) "Hide the playlist (Alt+E)" else "Show the playlist (Alt+E)",
+                onClick = onTogglePlaylist,
             ),
         )
         val connectionHint = if (plexState.isConnected) {
