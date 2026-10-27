@@ -7,12 +7,13 @@
 <p align="center">
   <b>A music player for Googlebooks in the spirit of the classic '90s desktop players.</b><br>
   A seven-segment clock, a scrolling title, a live visualizer and a proper playlist, drawn crisp at
-  any size. It plays your own files, and it can follow and control Spotify, YouTube Music or any
-  Chrome tab.
+  any size. It plays your own files, streams from your <b>Plex Media Server</b> (at home or on the go),
+  and can follow and control Spotify, YouTube Music or any Chrome tab.
 </p>
 
 <p align="center">
   <a href="../../releases/latest/download/PerfectSound.apk"><b>⬇ Download PerfectSound.apk</b></a>
+  &nbsp;·&nbsp; <a href="#plex-media-server-home--on-the-go">Plex Streaming</a>
   &nbsp;·&nbsp; <a href="#install">Install</a>
   &nbsp;·&nbsp; <a href="#privacy">Privacy</a>
   &nbsp;·&nbsp; <a href="CHANGELOG.md">What's new</a>
@@ -21,14 +22,14 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Googlebook_%26_Android-10%2B-4F6BED" alt="For Googlebooks and Android 10 or later">
-  <img src="https://img.shields.io/badge/internet_permission-none-2E7D32" alt="No internet permission">
+  <img src="https://img.shields.io/badge/Plex_Streaming-LAN_%7C_Remote_%7C_Relay-E5A00D" alt="Plex Streaming: LAN, Remote and Relay">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack_Compose-7F52FF" alt="Kotlin and Jetpack Compose">
   <img src="https://img.shields.io/badge/license-MIT-555555" alt="MIT license">
   <img src="https://img.shields.io/badge/developed_entirely_on-a_Googlebook-E0407E" alt="Developed entirely on a Googlebook">
 </p>
 
 <p align="center"><sub>A personal passion project by <a href="https://github.com/sanjaynathwani-blip">sanjaynathwani-blip</a>, proudly developed entirely on a Googlebook.
-Not affiliated with or endorsed by any employer, or by Winamp, Spotify, YouTube or Google (<a href="#about-this-project">more</a>).</sub></p>
+Not affiliated with or endorsed by any employer, or by Winamp, Plex, Spotify, YouTube or Google (<a href="#about-this-project">more</a>).</sub></p>
 
 <p align="center">
   <img src="docs/images/hero.png" width="880" alt="Perfect Sound playing Neon Freeway by The Seven Segments: the seven-segment clock at 1:33, a synthwave sunset cover, green frequency bands and a six-track playlist">
@@ -44,11 +45,15 @@ Googlebook's display scaling and at any window size.
 
 - **Your own music:** MP3, FLAC, AAC, Ogg, Opus, WAV and more, with gapless playback, a media
   notification, lock-screen and media-key controls, and it picks up where you left off.
+- **Plex Media Server streaming:** stream your personal music library directly from your Plex server
+  with automatic **Local LAN**, **Remote Direct**, and **Plex Relay** roaming, plus **On-the-Go**
+  bitrate control (`ORIG`, `320K`, `192K`, `128K`). Because Plex audio plays through Perfect Sound's
+  built-in engine, the 10-band equalizer and all six visualizers work natively with zero extra permissions.
 - **A visualizer** with six modes and four colour themes (below).
 - **Remote mode** for the **Spotify** and **YouTube Music** web players and anything else in
   **Chrome**: see and control what's playing, with the visualizer bouncing to it too.
-- **A real playlist:** add files or whole folders, drop files onto the window or use **Open with**
-  from Files; select with Ctrl and Shift, drag to reorder, right-click for more.
+- **A real playlist:** add local files, folders, or Plex tracks/albums/playlists; select with Ctrl
+  and Shift, drag to reorder, right-click for more.
 - **The classic keyboard shortcuts:** Z X C V B for the transport, and the rest below.
 
 ## The visualizer
@@ -59,8 +64,34 @@ Googlebook's display scaling and at any window size.
 </p>
 
 **MODE** cycles the six modes (or click the display) and **COLOR** cycles the themes; small dots
-under each button show where you are, and Perfect Sound remembers both. For your own files the
-visualizer needs no permissions at all.
+under each button show where you are, and Perfect Sound remembers both. For your own files and
+**Plex** streams, the visualizer and 10-band equalizer need no special audio-capture permissions at all.
+
+## Plex Media Server: Home & On the Go
+
+Pick **PLEX** in the source bar (or choose **ADD → Add from Plex…** in the playlist) to open the
+retro LCD **Plex Music Browser**:
+
+- **Two ways to connect:**
+  - **Automatic Plex Sign-In (Recommended):** signs in via `plex.tv` (one-tap browser OAuth or
+    4-character `plex.tv/link` code) to automatically discover all of your Plex servers and their
+    local, remote, and relay endpoints.
+  - **Manual Server URL + Token:** connect directly to any `https://host:32400` (plus an optional
+    remote/DDNS URL) using your `X-Plex-Token`.
+- **Works on the same network and on the go:**
+  - Concurrent endpoint probing automatically selects the fastest reachable route:
+    **`LOCAL`** (Direct LAN) → **`REMOTE`** (Port-forwarded / Direct Remote) → **`RELAY`** (Plex Relay fallback).
+  - Live network-change monitoring (`ConnectivityManager.NetworkCallback`) seamlessly switches between
+    home Wi-Fi and cellular/remote connections—even mid-playlist or when resuming a saved queue.
+  - Supports TLS verification for `*.plex.direct` certificates over direct LAN IPv4 addresses on
+    routers with DNS rebinding protection.
+- **On-the-Go streaming quality (`ORIG` / `320K` / `192K` / `128K`):**
+  - On **`LOCAL`** Wi-Fi/LAN, tracks always direct-stream in original lossless/source quality.
+  - On **`REMOTE`** or **`RELAY`** connections, toggle **ON-THE-GO** between **`ORIG`** (direct stream)
+    or **`320K` / `192K` / `128K`** to transcode on the fly via Plex's Universal Audio Transcoder.
+- **Browse & queue:** browse **Artists**, **Albums**, **Playlists**, **All Tracks**, or **Search**
+  across your music sections, and either **+ QUEUE** tracks into your mixed playlist or **▶ PLAY**
+  immediately.
 
 ## Remote mode: Spotify, YouTube Music and Chrome
 
@@ -117,8 +148,8 @@ Perfect Sound isn't in a store; you install the APK from this page. It takes a m
    Downloads.
 3. The first time, Android asks whether Chrome (or Files) may install apps: choose **Settings**,
    turn on **Allow from this source**, go back and click **Install**.
-4. Open **Perfect Sound** from the launcher and click **OPEN FILES** or **ADD FOLDER**, or pick
-   **SPOTIFY**, **YT MUSIC** or **CHROME**.
+4. Open **Perfect Sound** from the launcher and click **OPEN FILES** or **ADD FOLDER**, pick
+   **PLEX** to stream from your Plex server, or pick **SPOTIFY**, **YT MUSIC** or **CHROME**.
 
 **Updating:** download the new PerfectSound.apk and install it over the old one; your playlist and
 settings stay. Every release is signed with the same key, and Android refuses an update signed with
@@ -129,14 +160,16 @@ Googlebook's Linux Terminal, `sha256sum PerfectSound.apk` prints the one to comp
 
 ## Privacy
 
-- **No internet permission.** Perfect Sound can't send anything anywhere, and it has no accounts,
-  analytics or ads.
-- **Your files only through you.** It sees the files and folders you pick or drop on it, and
+- **No telemetry, analytics or ads.** Network access is used solely when you connect to your own
+  **Plex Media Server** (and `plex.tv` if you choose automatic Plex discovery). Saved playlists store
+  logical `plex://` track references on disk without embedding your `X-Plex-Token`.
+- **Your files only through you.** It sees the local files and folders you pick or drop on it, and
   nothing else of your storage.
-- Every permission is optional and asked for only when you use the feature that needs it:
+- Every runtime permission is optional and asked for only when you use the feature that needs it:
 
 | Permission | Why |
 | --- | --- |
+| Internet & Network State | Used only to discover and stream audio/artwork from your Plex Media Server and detect network handoffs between LAN and remote connections |
 | Notifications | The media controls while music plays in the background |
 | Notification access | Android's way of letting an app see and control Chrome's media sessions. Perfect Sound also reads Chrome's media notification to see which site is playing (Spotify, YouTube Music or another); it reads no other notifications |
 | Record audio, and the share prompt | Android's way of letting an app hear other apps' playback for the visualizer in remote mode. Only media playback is captured, never the microphone, and nothing is recorded or kept |
@@ -146,7 +179,7 @@ Uninstalling Perfect Sound removes everything it stored.
 ## To do
 
 - [ ] **Screen readers:** label the drawn controls for TalkBack.
-- [ ] **Ideas under consideration:** a media library to browse by artist and album, saved
+- [ ] **Ideas under consideration:** local media library browsing by artist and album, saved
   playlists, and lyrics.
 
 Ideas and bug reports are welcome in [Issues](../../issues).
@@ -155,12 +188,14 @@ Ideas and bug reports are welcome in [Issues](../../issues).
 
 Perfect Sound is plain Android: Kotlin, Jetpack Compose for every pixel of the interface (the
 seven-segment digits, the sliders and the meters are all drawn in code), and AndroidX Media3 for
-playback and the media session. Remote mode uses Android's media sessions and notification-listener
+playback and the media session. Plex streaming uses a Media3 `ResolvingDataSource` that resolves
+logical `plex://` URIs at playback time against the best active server endpoint (`LOCAL`, `REMOTE`,
+or `RELAY`). Remote mode uses Android's media sessions and notification-listener
 API (Chrome's media notification names the site that's playing, which tells Spotify and YouTube
 Music apart from other tabs); the remote visualizer uses `AudioPlaybackCapture`. The app lives in [`app/`](app/).
 
 ```sh
-./gradlew assembleDebug          # app/build/outputs/apk/debug/app-debug.apk ("Perfect Sound Dev")
+./gradlew assembleDebug          # app/build/outputs/apk/debug/PerfectSound-debug.apk ("Perfect Sound Dev")
 ./gradlew testDebugUnitTest      # unit tests
 ./gradlew assembleRelease        # signed only if ~/.config/perfect-sound/keystore.properties exists
 ```
@@ -191,9 +226,9 @@ affiliation with my employer: my employer didn't make, sponsor, review or endors
 here speaks for my employer or endorses its products.
 
 It's inspired by the desktop music players of the late '90s but shares no code or artwork with
-any of them. Winamp is a trademark of its owners, Spotify is a trademark of Spotify AB, and Chrome,
-YouTube Music and Googlebook are trademarks of Google LLC; they're named only to describe what Perfect Sound
-works with, and none of them made or endorsed it.
+any of them. Winamp is a trademark of its owners, Plex is a trademark of Plex, Inc., Spotify is a
+trademark of Spotify AB, and Chrome, YouTube Music and Googlebook are trademarks of Google LLC;
+they're named only to describe what Perfect Sound works with, and none of them made or endorsed it.
 
 ## Licenses
 
