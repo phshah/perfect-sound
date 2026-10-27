@@ -18,18 +18,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,8 +56,15 @@ data class PanelButton(
     val onClick: () -> Unit,
 )
 
-/** Room under the art for its buttons until they have been measured. */
-private val ButtonsHeight = 56.dp
+/** Height of each [LedToggle] under the art, and the gap between them. */
+private val ButtonHeight = 20.dp
+private val ButtonSpacing = 4.dp
+
+/** Smaller than this the album art is hidden so its buttons stay fully visible. */
+private val MinArtSize = 48.dp
+
+/** The buttons under the art never get narrower than this, so their labels stay readable. */
+private val MinButtonWidth = 132.dp
 
 /**
  * Album art with its buttons below, and to its right the track details above the visualizer.
@@ -92,20 +93,29 @@ fun NowPlayingPanel(
     Column(modifier.background(PsColors.Panel)) {
         TitleStrip(label)
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(10.dp)) {
-            val density = LocalDensity.current
-            var buttonsHeight by remember { mutableStateOf(ButtonsHeight) }
+            // Computed from the fixed button height rather than measured: a measurement taken while the
+            // buttons are squeezed reports the clipped size, so the art would never shrink to make room.
+            val buttonsHeight = ButtonHeight * buttons.size + ButtonSpacing * (buttons.size - 1).coerceAtLeast(0)
             val belowArt = if (buttons.isEmpty()) 0.dp else buttonsHeight + 8.dp
             // The art takes the height left over by its buttons, but leaves most of the width to the EQ.
-            val artSize = minOf(maxHeight - belowArt, maxWidth * 0.4f, 320.dp).coerceAtLeast(56.dp)
+            // The buttons always come first: when the panel is short (e.g. beside the playlist) the art
+            // shrinks, and is dropped entirely rather than pushing the buttons out of view.
+            val artSize = minOf(maxHeight - belowArt, maxWidth * 0.4f, 320.dp)
+            val showArt = artSize >= MinArtSize || buttons.isEmpty()
+            val columnWidth = when {
+                buttons.isEmpty() -> artSize.coerceAtLeast(MinArtSize)
+                else -> maxOf(artSize, MinButtonWidth).coerceAtMost(maxWidth * 0.45f)
+            }
             // The row is as tall as the art and its buttons, so the visualizer ends level with them.
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(Modifier.width(artSize), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AlbumArt(info.art, Modifier.size(artSize))
+                Column(
+                    Modifier.width(columnWidth),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (showArt) AlbumArt(info.art, Modifier.size(artSize.coerceAtLeast(MinArtSize)))
                     // Each button is as wide as the art.
-                    if (buttons.isNotEmpty()) Column(
-                        Modifier.onSizeChanged { buttonsHeight = with(density) { it.height.toDp() } },
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
+                    if (buttons.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(ButtonSpacing)) {
                         buttons.forEach {
                             LedToggle(
                                 label = it.label,
